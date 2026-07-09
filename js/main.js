@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // 0. Visit Tracking
+    if (!window.location.pathname.includes('admin1')) {
+        localStorage.setItem('attenza_visits', (parseInt(localStorage.getItem('attenza_visits') || 0) + 1));
+    }
+
     // 1. Navbar Scroll Effect
     const navbar = document.getElementById('navbar');
     const sections = document.querySelectorAll('section[id]');
@@ -306,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function runSecurityScan() {
+        localStorage.setItem('attenza_clicks', (parseInt(localStorage.getItem('attenza_clicks') || 0) + 1));
         scanOverlay.classList.add('active');
         
         const scanSteps = [
@@ -352,6 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function triggerApkDownload() {
+        localStorage.setItem('attenza_downloads', (parseInt(localStorage.getItem('attenza_downloads') || 0) + 1));
         const link = document.createElement('a');
         link.href = 'assets/attenza.apk';
         link.download = 'attenza.apk';

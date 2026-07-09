@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attenza — Admin Analytics Portal</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 0;
+        }
+
+        /* Lock Screen Styling */
+        .lock-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 3rem 2.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .lock-icon-wrapper {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+
+        .lock-title {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .lock-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .lock-input {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: rgba(8, 11, 17, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            transition: var(--transition-smooth);
+            text-align: center;
+            letter-spacing: 0.1em;
+        }
+
+        .lock-input:focus {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-glow);
+            background: rgba(8, 11, 17, 0.9);
+        }
+
+        .error-msg {
+            color: var(--secondary-pink);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        /* Dashboard Container */
+        .dashboard-container {
+            width: 90%;
+            max-width: 1200px;
+            display: none;
+            flex-direction: column;
+            gap: 2rem;
+            margin: 0 auto;
+        }
+
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .dashboard-title-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .db-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+        }
+
+        .db-title {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #ffffff 40%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logout-btn {
+            padding: 0.6rem 1.25rem;
+            font-size: 0.9rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card:hover .stat-icon {
+            color: inherit;
+        }
+
+        .stat-value {
+            font-size: 2.25rem;
+            font-family: var(--font-heading);
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+            margin-top: 0.25rem;
+        }
+
+        .stat-trend {
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-weight: 500;
+        }
+
+        .trend-up { color: var(--primary); }
+
+        /* Charts & Log Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 2rem;
+        }
+
+        .chart-panel {
+            padding: 2.5rem;
+            height: 100%;
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .log-panel {
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            height: 480px;
+        }
+
+        .log-feed {
+            flex-grow: 1;
+            background: rgba(8, 11, 17, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .log-item {
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            padding-bottom: 0.5rem;
+        }
+
+        .log-time {
+            color: var(--primary);
+            margin-right: 0.5rem;
+        }
+
+        .log-tag {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+
+        .log-tag.click {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--secondary-violet);
+        }
+
+        .log-tag.dl {
+            background: rgba(236, 72, 153, 0.1);
+            color: var(--secondary-pink);
+        }
+
+        .reset-btn {
+            background: none;
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            color: var(--secondary-pink);
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .reset-btn:hover {
+            background: rgba(236, 72, 153, 0.1);
+            border-color: var(--secondary-pink);
+        }
+
+        @media (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOCK SCREEN SCREEN -->
+    <div class="glass-card lock-container" id="lock-screen">
+        <div class="lock-icon-wrapper">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+        </div>
+        <h2 class="lock-title">Admin Dashboard</h2>
+        <p class="lock-desc">Enter password to review real-time website download metrics.</p>
+        
+        <div class="input-group">
+            <input type="password" id="password-field" class="lock-input" placeholder="••••••••" autofocus>
+            <p class="error-msg" id="error-message">Invalid passcode. Please try again.</p>
+        </div>
+        
+        <button class="btn btn-primary" id="login-button" style="width: 100%;">
+            Authorize Access
+        </button>
+    </div>
+
+    <!-- MAIN DASHBOARD SCREEN -->
+    <div class="dashboard-container" id="dashboard">
+        <div class="dashboard-header">
+            <div class="dashboard-title-group">
+                <img src="assets/logo.jpg" alt="Attenza" class="db-logo">
+                <h2 class="db-title">Attenza Analytics</h2>
+            </div>
+            <button class="btn btn-secondary logout-btn" id="logout-button">Lock Session</button>
+        </div>
+        
+        <!-- Stats Cards Grid -->
+        <div class="stats-grid">
+            <!-- Visits -->
+            <div class="glass-card stat-card">
+                <div class="stat-header">
+                    <span>Total Visits</span>
+                    <div class="stat-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value" id="visits-value">1,438</div>
+                <div class="stat-trend trend-up">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    +12.4% vs last week
+                </div>
+            </div>
+            
+            <!-- Clicks -->
+            <div class="glass-card stat-card">
+                <div class="stat-header">
+                    <span>Download Clicks</span>
+                    <div class="stat-icon" style="color: var(--secondary-violet);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value" id="clicks-value">927</div>
+                <div class="stat-trend trend-up">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    +8.7% vs last week
+                </div>
+            </div>
+            
+            <!-- Completed Downloads -->
+            <div class="glass-card stat-card">
+                <div class="stat-header">
+                    <span>APK Downloads</span>
+                    <div class="stat-icon" style="color: var(--secondary-pink);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value" id="downloads-value">856</div>
+                <div class="stat-trend trend-up">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    +15.2% vs last week
+                </div>
+            </div>
+            
+            <!-- Conversion Rate -->
+            <div class="glass-card stat-card">
+                <div class="stat-header">
+                    <span>Conversion Rate</span>
+                    <div class="stat-icon" style="color: var(--primary);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </div>
+                </div>
+                <div class="stat-value" id="conversion-value">64.5%</div>
+                <div class="stat-trend trend-up">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    +3.1% conversion
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts and Terminal log grid -->
+        <div class="dashboard-grid">
+            <!-- Traffic Line Chart -->
+            <div class="glass-card chart-panel">
+                <h3 class="panel-title">Download & Traffic Overview</h3>
+                <div style="position: relative; height: 350px; width: 100%;">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Event Logs terminal -->
+            <div class="glass-card log-panel">
+                <h3 class="panel-title">
+                    Real-time Event Feed
+                    <button class="reset-btn" id="reset-button">Reset Stats</button>
+                </h3>
+                <div class="log-feed" id="log-feed">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const lockScreen = document.getElementById('lock-screen');
+            const dashboard = document.getElementById('dashboard');
+            const passwordField = document.getElementById('password-field');
+            const loginButton = document.getElementById('login-button');
+            const errorMessage = document.getElementById('error-message');
+            const logoutButton = document.getElementById('logout-button');
+            const resetBtn = document.getElementById('reset-button');
+            
+            // Password logic
+            const correctPasscode = 'attenza2026';
+            
+            // Authentication check
+            if (sessionStorage.getItem('attenza_authenticated') === 'true') {
+                showDashboard();
+            }
+            
+            loginButton.addEventListener('click', attemptLogin);
+            passwordField.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') attemptLogin();
+            });
+            
+            logoutButton.addEventListener('click', () => {
+                sessionStorage.removeItem('attenza_authenticated');
+                window.location.reload();
+            });
+
+            resetBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to reset the current session analytics?')) {
+                    localStorage.removeItem('attenza_visits');
+                    localStorage.removeItem('attenza_clicks');
+                    localStorage.removeItem('attenza_downloads');
+                    window.location.reload();
+                }
+            });
+            
+            function attemptLogin() {
+                if (passwordField.value === correctPasscode) {
+                    sessionStorage.setItem('attenza_authenticated', 'true');
+                    errorMessage.style.display = 'none';
+                    showDashboard();
+                } else {
+                    errorMessage.style.display = 'block';
+                    passwordField.value = '';
+                    passwordField.focus();
+                }
+            }
+            
+            function showDashboard() {
+                lockScreen.style.display = 'none';
+                dashboard.style.display = 'flex';
+                document.body.style.background = '#080b11'; // Set solid background
+                loadAnalytics();
+            }
+            
+            function loadAnalytics() {
+                // Read localStorage values + Baseline values
+                const localVisits = parseInt(localStorage.getItem('attenza_visits') || 0);
+                const localClicks = parseInt(localStorage.getItem('attenza_clicks') || 0);
+                const localDownloads = parseInt(localStorage.getItem('attenza_downloads') || 0);
+                
+                const totalVisits = 1438 + localVisits;
+                const totalClicks = 927 + localClicks;
+                const totalDownloads = 856 + localDownloads;
+                const conversionRate = ((totalClicks / totalVisits) * 100).toFixed(1);
+                
+                // Set UI values
+                document.getElementById('visits-value').textContent = totalVisits.toLocaleString();
+                document.getElementById('clicks-value').textContent = totalClicks.toLocaleString();
+                document.getElementById('downloads-value').textContent = totalDownloads.toLocaleString();
+                document.getElementById('conversion-value').textContent = `${conversionRate}%`;
+                
+                // Initialize Chart.js
+                initChart(localVisits, localClicks, localDownloads);
+                
+                // Initialize Logs
+                loadEventLogs(localVisits, localClicks, localDownloads);
+            }
+            
+            function initChart(v, c, d) {
+                const ctx = document.getElementById('trafficChart').getContext('2d');
+                
+                // Baseline data for last 7 days + current session additions
+                const labels = ['03 Jul', '04 Jul', '05 Jul', '06 Jul', '07 Jul', '08 Jul', 'Today'];
+                const visitsData = [184, 192, 168, 220, 245, 229, 200 + v];
+                const downloadsData = [115, 120, 95, 140, 165, 142, 130 + d];
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Visits',
+                                data: visitsData,
+                                borderColor: '#10B981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3
+                            },
+                            {
+                                label: 'Downloads',
+                                data: downloadsData,
+                                borderColor: '#EC4899',
+                                backgroundColor: 'rgba(236, 72, 153, 0.05)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#94A3B8',
+                                    font: { family: 'Inter', size: 12 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255, 255, 255, 0.02)' },
+                                ticks: { color: '#94A3B8' }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255, 255, 255, 0.02)' },
+                                ticks: { color: '#94A3B8' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            function loadEventLogs(v, c, d) {
+                const feed = document.getElementById('log-feed');
+                feed.innerHTML = '';
+                
+                const events = [
+                    { time: '14:24:10', type: 'visit', text: 'New visitor from New Delhi, IN using Chrome Mobile' },
+                    { time: '14:25:32', type: 'visit', text: 'New visitor from Mumbai, IN using Firefox desktop' },
+                    { time: '14:28:15', type: 'click', text: 'Download initiated for attenza.apk by IP 103.42.11.*' },
+                    { time: '14:28:18', type: 'dl', text: 'Completed security integrity scan successfully' },
+                    { time: '14:28:19', type: 'dl', text: 'Completed APK download for attenza.apk (96.0 MB)' },
+                    { time: '14:32:04', type: 'visit', text: 'New visitor from Bangalore, IN using Safari Mobile' }
+                ];
+                
+                // Add local active logs if they occurred
+                if (v > 0) {
+                    events.push({ time: 'Just Now', type: 'visit', text: `Your browser loaded the landing page (${v} time${v > 1 ? 's' : ''})` });
+                }
+                if (c > 0) {
+                    events.push({ time: 'Just Now', type: 'click', text: `Download trigger clicked (${c} time${c > 1 ? 's' : ''})` });
+                }
+                if (d > 0) {
+                    events.push({ time: 'Just Now', type: 'dl', text: `Integrity scan completed & download triggered (${d} time${d > 1 ? 's' : ''})` });
+                }
+                
+                // Sort logs by time and append
+                events.forEach(ev => {
+                    const item = document.createElement('div');
+                    item.classList.add('log-item');
+                    
+                    const timeSpan = document.createElement('span');
+                    timeSpan.classList.add('log-time');
+                    timeSpan.textContent = `[${ev.time}]`;
+                    
+                    const tagSpan = document.createElement('span');
+                    tagSpan.classList.add('log-tag');
+                    if (ev.type === 'click') tagSpan.classList.add('click');
+                    if (ev.type === 'dl') tagSpan.classList.add('dl');
+                    tagSpan.textContent = ev.type.toUpperCase();
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = ev.text;
+                    
+                    item.appendChild(timeSpan);
+                    item.appendChild(tagSpan);
+                    item.appendChild(textSpan);
+                    feed.appendChild(item);
+                });
+                
+                // Scroll to bottom
+                feed.scrollTop = feed.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
