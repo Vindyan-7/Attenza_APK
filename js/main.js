@@ -1,7 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Supabase Configuration
+    const supabaseUrl = 'https://ynraujbcgzwzovocxtgj.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucmF1amJjZ3p3em92b2N4dGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNTUwNTgsImV4cCI6MjA5NzYzMTA1OH0.Wvt--0M-3QxG7xcicEBOwf53f-GeR8_CsEt_m5KwTlM';
+
+    // Session Identifier
+    let sessionId = sessionStorage.getItem('attenza_session_id');
+    if (!sessionId) {
+        sessionId = 'sess_' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('attenza_session_id', sessionId);
+    }
+
+    async function logEvent(eventType) {
+        // Backwards compatibility with localStorage for instant feedback
+        const localKey = eventType === 'visit' ? 'attenza_visits' : (eventType === 'click' ? 'attenza_clicks' : 'attenza_downloads');
+        localStorage.setItem(localKey, (parseInt(localStorage.getItem(localKey) || 0) + 1));
+        
+        try {
+            await fetch(`${supabaseUrl}/rest/v1/website_analytics`, {
+                method: 'POST',
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    session_id: sessionId,
+                    user_agent: navigator.userAgent
+                })
+            });
+        } catch (err) {
+            console.error('Error logging event:', err);
+        }
+    }
+
     // 0. Visit Tracking
     if (!window.location.pathname.includes('admin1')) {
-        localStorage.setItem('attenza_visits', (parseInt(localStorage.getItem('attenza_visits') || 0) + 1));
+        if (!sessionStorage.getItem('attenza_visit_logged')) {
+            logEvent('visit');
+            sessionStorage.setItem('attenza_visit_logged', 'true');
+        }
     }
 
     // 1. Navbar Scroll Effect
@@ -311,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function runSecurityScan() {
-        localStorage.setItem('attenza_clicks', (parseInt(localStorage.getItem('attenza_clicks') || 0) + 1));
+        logEvent('click');
         scanOverlay.classList.add('active');
         
         const scanSteps = [
@@ -358,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function triggerApkDownload() {
-        localStorage.setItem('attenza_downloads', (parseInt(localStorage.getItem('attenza_downloads') || 0) + 1));
+        logEvent('download');
         const link = document.createElement('a');
         link.href = 'assets/attenza.apk';
         link.download = 'attenza.apk';

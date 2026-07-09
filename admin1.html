@@ -444,12 +444,22 @@
                 window.location.reload();
             });
 
-            resetBtn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to reset the current session analytics?')) {
-                    localStorage.removeItem('attenza_visits');
-                    localStorage.removeItem('attenza_clicks');
-                    localStorage.removeItem('attenza_downloads');
-                    window.location.reload();
+            resetBtn.addEventListener('click', async () => {
+                if (confirm('WARNING: Are you sure you want to permanently delete all global website analytics records from Supabase?')) {
+                    try {
+                        const res = await fetch(`${supabaseUrl}/rest/v1/website_analytics`, {
+                            method: 'DELETE',
+                            headers: {
+                                'apikey': supabaseKey,
+                                'Authorization': `Bearer ${supabaseKey}`
+                            }
+                        });
+                        if (!res.ok) throw new Error('Failed to delete analytics');
+                        alert('All analytics data successfully cleared!');
+                        window.location.reload();
+                    } catch (err) {
+                        alert('Error clearing data: ' + err.message);
+                    }
                 }
             });
             
@@ -472,46 +482,81 @@
                 loadAnalytics();
             }
             
-            function loadAnalytics() {
-                // Read localStorage values only (no mock baselines)
-                const localVisits = parseInt(localStorage.getItem('attenza_visits') || 0);
-                const localClicks = parseInt(localStorage.getItem('attenza_clicks') || 0);
-                const localDownloads = parseInt(localStorage.getItem('attenza_downloads') || 0);
-                
-                const totalVisits = localVisits;
-                const totalClicks = localClicks;
-                const totalDownloads = localDownloads;
-                const conversionRate = totalVisits > 0 ? ((totalClicks / totalVisits) * 100).toFixed(1) : '0.0';
-                
-                // Set UI values
-                document.getElementById('visits-value').textContent = totalVisits.toLocaleString();
-                document.getElementById('clicks-value').textContent = totalClicks.toLocaleString();
-                document.getElementById('downloads-value').textContent = totalDownloads.toLocaleString();
-                document.getElementById('conversion-value').textContent = `${conversionRate}%`;
-                
-                // Initialize Chart.js
-                initChart(localVisits, localClicks, localDownloads);
-                
-                // Initialize Logs
-                loadEventLogs(localVisits, localClicks, localDownloads);
+            const supabaseUrl = 'https://ynraujbcgzwzovocxtgj.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucmF1amJjZ3p3em92b2N4dGdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNTUwNTgsImV4cCI6MjA5NzYzMTA1OH0.Wvt--0M-3QxG7xcicEBOwf53f-GeR8_CsEt_m5KwTlM';
+            
+            async function loadAnalytics() {
+                try {
+                    const res = await fetch(`${supabaseUrl}/rest/v1/website_analytics?select=event_type,created_at,user_agent&order=created_at.desc`, {
+                        headers: {
+                            'apikey': supabaseKey,
+                            'Authorization': `Bearer ${supabaseKey}`
+                        }
+                    });
+                    if (!res.ok) throw new Error('Failed to fetch analytics');
+                    const data = await res.json();
+                    
+                    const totalVisits = data.filter(x => x.event_type === 'visit').length;
+                    const totalClicks = data.filter(x => x.event_type === 'click').length;
+                    const totalDownloads = data.filter(x => x.event_type === 'download').length;
+                    const conversionRate = totalVisits > 0 ? ((totalClicks / totalVisits) * 100).toFixed(1) : '0.0';
+                    
+                    // Set UI values
+                    document.getElementById('visits-value').textContent = totalVisits.toLocaleString();
+                    document.getElementById('clicks-value').textContent = totalClicks.toLocaleString();
+                    document.getElementById('downloads-value').textContent = totalDownloads.toLocaleString();
+                    document.getElementById('conversion-value').textContent = `${conversionRate}%`;
+                    
+                    // Initialize Chart.js with global data
+                    initChart(data);
+                    
+                    // Initialize Logs with global data
+                    loadEventLogs(data);
+                } catch (err) {
+                    console.error('Error loading analytics:', err);
+                }
             }
             
-            function initChart(v, c, d) {
+            function initChart(data) {
                 const ctx = document.getElementById('trafficChart').getContext('2d');
                 
-                // Real data for last 7 days (previous days start at 0, today displays active v and d)
-                const labels = ['03 Jul', '04 Jul', '05 Jul', '06 Jul', '07 Jul', '08 Jul', 'Today'];
-                const visitsData = [0, 0, 0, 0, 0, 0, v];
-                const downloadsData = [0, 0, 0, 0, 0, 0, d];
+                const days = [];
+                const visitCounts = [];
+                const downloadCounts = [];
+                
+                // Fetch daily breakdowns for the last 7 days
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    
+                    const dayString = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+                    days.push(dayString);
+                    
+                    const startOfDay = new Date(d.setHours(0,0,0,0)).getTime();
+                    const endOfDay = new Date(d.setHours(23,59,59,999)).getTime();
+                    
+                    const dailyVisits = data.filter(x => {
+                        const time = new Date(x.created_at).getTime();
+                        return x.event_type === 'visit' && time >= startOfDay && time <= endOfDay;
+                    }).length;
+                    
+                    const dailyDownloads = data.filter(x => {
+                        const time = new Date(x.created_at).getTime();
+                        return x.event_type === 'download' && time >= startOfDay && time <= endOfDay;
+                    }).length;
+                    
+                    visitCounts.push(dailyVisits);
+                    downloadCounts.push(dailyDownloads);
+                }
                 
                 new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
+                        labels: days,
                         datasets: [
                             {
                                 label: 'Visits',
-                                data: visitsData,
+                                data: visitCounts,
                                 borderColor: '#10B981',
                                 backgroundColor: 'rgba(16, 185, 129, 0.05)',
                                 fill: true,
@@ -520,7 +565,7 @@
                             },
                             {
                                 label: 'Downloads',
-                                data: downloadsData,
+                                data: downloadCounts,
                                 borderColor: '#EC4899',
                                 backgroundColor: 'rgba(236, 72, 153, 0.05)',
                                 fill: true,
@@ -547,32 +592,41 @@
                             },
                             y: {
                                 grid: { color: 'rgba(255, 255, 255, 0.02)' },
-                                ticks: { color: '#94A3B8' }
+                                ticks: { color: '#94A3B8' },
+                                min: 0,
+                                ticks: {
+                                    stepSize: 1,
+                                    precision: 0
+                                }
                             }
                         }
                     }
                 });
             }
             
-            function loadEventLogs(v, c, d) {
+            function parseUA(ua) {
+                if (!ua) return 'Unknown Device';
+                if (/android/i.test(ua)) return 'Android Device';
+                if (/iphone|ipad/i.test(ua)) return 'iOS Device';
+                if (/macintosh/i.test(ua)) return 'Mac OS';
+                if (/windows/i.test(ua)) return 'Windows PC';
+                if (/linux/i.test(ua)) return 'Linux PC';
+                return 'Web Browser';
+            }
+
+            function loadEventLogs(data) {
                 const feed = document.getElementById('log-feed');
                 feed.innerHTML = '';
                 
-                const events = [];
+                // Show latest 50 logs globally
+                const latestEvents = data.slice(0, 50);
                 
-                // Add local active logs if they occurred
-                if (v > 0) {
-                    events.push({ time: 'Active', type: 'visit', text: `Your browser loaded the landing page (${v} time${v > 1 ? 's' : ''})` });
-                }
-                if (c > 0) {
-                    events.push({ time: 'Active', type: 'click', text: `Download trigger clicked (${c} time${c > 1 ? 's' : ''})` });
-                }
-                if (d > 0) {
-                    events.push({ time: 'Active', type: 'dl', text: `Integrity scan completed & download triggered (${d} time${d > 1 ? 's' : ''})` });
+                if (latestEvents.length === 0) {
+                    feed.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">No activity recorded yet. Logs will stream live.</div>';
+                    return;
                 }
                 
-                // Sort logs by time and append
-                events.forEach(ev => {
+                latestEvents.forEach(ev => {
                     const item = document.createElement('div');
                     item.classList.add('log-item');
                     
