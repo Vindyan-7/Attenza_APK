@@ -473,15 +473,15 @@
             }
             
             function loadAnalytics() {
-                // Read localStorage values + Baseline values
+                // Read localStorage values only (no mock baselines)
                 const localVisits = parseInt(localStorage.getItem('attenza_visits') || 0);
                 const localClicks = parseInt(localStorage.getItem('attenza_clicks') || 0);
                 const localDownloads = parseInt(localStorage.getItem('attenza_downloads') || 0);
                 
-                const totalVisits = 1438 + localVisits;
-                const totalClicks = 927 + localClicks;
-                const totalDownloads = 856 + localDownloads;
-                const conversionRate = ((totalClicks / totalVisits) * 100).toFixed(1);
+                const totalVisits = localVisits;
+                const totalClicks = localClicks;
+                const totalDownloads = localDownloads;
+                const conversionRate = totalVisits > 0 ? ((totalClicks / totalVisits) * 100).toFixed(1) : '0.0';
                 
                 // Set UI values
                 document.getElementById('visits-value').textContent = totalVisits.toLocaleString();
@@ -499,10 +499,10 @@
             function initChart(v, c, d) {
                 const ctx = document.getElementById('trafficChart').getContext('2d');
                 
-                // Baseline data for last 7 days + current session additions
+                // Real data for last 7 days (previous days start at 0, today displays active v and d)
                 const labels = ['03 Jul', '04 Jul', '05 Jul', '06 Jul', '07 Jul', '08 Jul', 'Today'];
-                const visitsData = [184, 192, 168, 220, 245, 229, 200 + v];
-                const downloadsData = [115, 120, 95, 140, 165, 142, 130 + d];
+                const visitsData = [0, 0, 0, 0, 0, 0, v];
+                const downloadsData = [0, 0, 0, 0, 0, 0, d];
                 
                 new Chart(ctx, {
                     type: 'line',
@@ -558,24 +558,17 @@
                 const feed = document.getElementById('log-feed');
                 feed.innerHTML = '';
                 
-                const events = [
-                    { time: '14:24:10', type: 'visit', text: 'New visitor from New Delhi, IN using Chrome Mobile' },
-                    { time: '14:25:32', type: 'visit', text: 'New visitor from Mumbai, IN using Firefox desktop' },
-                    { time: '14:28:15', type: 'click', text: 'Download initiated for attenza.apk by IP 103.42.11.*' },
-                    { time: '14:28:18', type: 'dl', text: 'Completed security integrity scan successfully' },
-                    { time: '14:28:19', type: 'dl', text: 'Completed APK download for attenza.apk (96.0 MB)' },
-                    { time: '14:32:04', type: 'visit', text: 'New visitor from Bangalore, IN using Safari Mobile' }
-                ];
+                const events = [];
                 
                 // Add local active logs if they occurred
                 if (v > 0) {
-                    events.push({ time: 'Just Now', type: 'visit', text: `Your browser loaded the landing page (${v} time${v > 1 ? 's' : ''})` });
+                    events.push({ time: 'Active', type: 'visit', text: `Your browser loaded the landing page (${v} time${v > 1 ? 's' : ''})` });
                 }
                 if (c > 0) {
-                    events.push({ time: 'Just Now', type: 'click', text: `Download trigger clicked (${c} time${c > 1 ? 's' : ''})` });
+                    events.push({ time: 'Active', type: 'click', text: `Download trigger clicked (${c} time${c > 1 ? 's' : ''})` });
                 }
                 if (d > 0) {
-                    events.push({ time: 'Just Now', type: 'dl', text: `Integrity scan completed & download triggered (${d} time${d > 1 ? 's' : ''})` });
+                    events.push({ time: 'Active', type: 'dl', text: `Integrity scan completed & download triggered (${d} time${d > 1 ? 's' : ''})` });
                 }
                 
                 // Sort logs by time and append
